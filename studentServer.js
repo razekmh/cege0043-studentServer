@@ -19,3 +19,10 @@ var extension = path.extname(filename);
 console.log("The file " + filename + " was requested.");
 next();
 });
+
+app.get('/test.html', function (req, res) {
+// run some server-side code
+console.log('test.html requested');
+// note that __dirname gives the path to the studentServer.js file
+res.sendFile(__dirname + '/test.html');
+});
