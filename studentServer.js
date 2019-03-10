@@ -12,6 +12,44 @@ app.get('/',function (req,res) {
 res.send("hello world from the HTTP server");
 });
 
+// Add the body-parser to studentServer.js close to the top so that you will be able to process the uploaded data
+var bodyParser = require('body-parser');
+app.use(bodyParser.urlencoded({
+extended: true
+}));
+app.use(bodyParser.json());
+
+//Import the required database connectivity code and set up a database connection
+var fs = require('fs');
+var pg = require('pg');
+var configtext = ""+fs.readFileSync("/home/studentuser/certs/postGISConnection.js");
+// now convert the configruation file into the correct format -i.e. a name/value pair array
+var configarray = configtext.split(",");
+var config = {};
+for (var i = 0; i < configarray.length; i++) {
+var split = configarray[i].split(':');
+config[split[0].trim()] = split[1].trim();
+}
+var pool = new pg.Pool(config);
+
+//Add a simple app.get to test out the connection
+app.get('/postgistest', function (req,res) {
+	pool.connect(function(err,client,done) {
+	if(err){
+		console.log("not able to get connection "+ err);
+		res.status(400).send(err);
+		}
+	client.query('SELECT name FROM london_poi' ,function(err,result) {
+		done();
+		if(err){
+			console.log(err);
+			res.status(400).send(err);
+			}
+		res.status(200).send(result.rows);
+		});
+	});
+});
+
 // adding functionality to log the requests
 app.use(function (req, res, next) {
 var filename = path.basename(req.url);
