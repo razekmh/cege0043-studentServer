@@ -66,9 +66,7 @@ next();
 
 
 
-// serve static files - e.g. html, css
-// this should always be the last line in the server file
-app.use(express.static(__dirname));
+
 
 
 // actually do the POST request to studentServer.js and upload this to Ubuntu and GitHub (note the use of POST this time!)
@@ -78,22 +76,31 @@ app.post('/uploadData',function(req,res){
 console.dir(req.body);
 pool.connect(function(err,client,done) {
 if(err){
-	console.log("not able to get connection "+ err);
-	res.status(400).send(err);
-	}
+console.log("not able to get connection "+ err);
+res.status(400).send(err);
+}
 var name = req.body.name;
 var surname = req.body.surname;
 var module = req.body.module;
 var portnum = req.body.port_id;
-var querystring = "INSERT into formdata (name,surname,module, port_id) values ($1,$2,$3,$4) ";
+var language = req.body.language;
+var modulelist = req.body.modulelist;
+var lecturetime = req.body.lecturetime;
+var geometrystring = "st_geomfromtext('POINT("+req.body.longitude + " "+ req.body.latitude + ")')";
+var querystring = "INSERT into formdata (name,surname,module, port_id,language, modulelist, lecturetime, geom) values ($1,$2,$3,$4,$5,$6,$7,";
+var querystring = querystring + geometrystring + ")";
 console.log(querystring);
-client.query( querystring,[name,surname,module,portnum],function(err,result) {
-	done();
+client.query( querystring,[name,surname,module, portnum, language, modulelist, lecturetime],function(err,result) {
+done();
 if(err){
-console.log(err);
-res.status(400).send(err);
+	console.log(err);
+	res.status(400).send(err);
 }
 res.status(200).send("row inserted");
 });
 });
 });
+
+// serve static files - e.g. html, css
+// this should always be the last line in the server file
+app.use(express.static(__dirname));
