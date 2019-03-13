@@ -21,7 +21,7 @@ res.send("hello world from the HTTP server");
 // Add the body-parser to studentServer.js close to the top so that you will be able to process the uploaded data
 var bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({
-extended: true
+	extended: true
 }));
 app.use(bodyParser.json());
 
@@ -33,27 +33,56 @@ var configtext = ""+fs.readFileSync("/home/studentuser/certs/postGISConnection.j
 var configarray = configtext.split(",");
 var config = {};
 for (var i = 0; i < configarray.length; i++) {
-var split = configarray[i].split(':');
-config[split[0].trim()] = split[1].trim();
+	var split = configarray[i].split(':');
+	config[split[0].trim()] = split[1].trim();
 }
 var pool = new pg.Pool(config);
 
-//Add a simple app.get to test out the connection
+//a simple app.get to test out the connection
 app.get('/postgistest', function (req,res) {
 	pool.connect(function(err,client,done) {
-	if(err){
-		console.log("not able to get connection "+ err);
-		res.status(400).send(err);
+		if(err){
+			console.log("not able to get connection "+ err);
+			res.status(400).send(err);
 		}
-	client.query('SELECT name FROM london_poi' ,function(err,result) {
+		client.query('SELECT name FROM london_poi' ,function(err,result) {
+			done();
+			if(err){
+				console.log(err);
+				res.status(400).send(err);
+			}
+			res.status(200).send(result.rows);
+		});
+	});
+});
+
+
+//this function is using fixed table name, column name and columns (name, surname and port_id)
+app.get('/getFormData/:port_id', function (req,res) {
+	pool.connect(function(err,client,done) {
+		if(err){
+			console.log("not able to get connection "+ err);
+			res.status(400).send(err);
+		}
+		// use the inbuilt geoJSON functionality
+		// and create the required geoJSON format using a query adapted from here: http://www.postgresonline.com/journal/archives/267-Creating-GeoJSON-Feature-Collections-with-JSON-and-PostGIS-functions.html, accessed 4th January 2018
+		// note that query needs to be a single string with no line breaks so built it up bit by bit
+		var querystring = " SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) As features FROM ";
+		querystring = querystring + "(SELECT 'Feature' As type ,ST_AsGeoJSON(lg.geom)::json As geometry, ";
+		querystring = querystring + "row_to_json((SELECT l FROM (SELECT name,surname, port_id) As l ";
+		querystring = querystring + " )) As properties";
+		querystring = querystring + " FROM formdata As lg where lg.port_id= '"+req.params.port_id + "' limit 100 ) As f ";
+		console.log(querystring);
+		client.query(querystring,function(err,result){
+		//call `done()` to release the client back to the pool
 		done();
 		if(err){
 			console.log(err);
 			res.status(400).send(err);
-			}
+		}
 		res.status(200).send(result.rows);
-		});
 	});
+});
 });
 
 // adding functionality to log the requests
@@ -74,11 +103,11 @@ app.post('/uploadData',function(req,res){
 // note that we are using POST here as we are uploading data
 // so the parameters form part of the BODY of the request rather than the RESTful API
 console.dir(req.body);
-pool.connect(function(err,client,done) {
-if(err){
-console.log("not able to get connection "+ err);
-res.status(400).send(err);
-}
+	pool.connect(function(err,client,done) {
+		if(err){
+		console.log("not able to get connection "+ err);
+		res.status(400).send(err);
+		}
 var name = req.body.name;
 var surname = req.body.surname;
 var module = req.body.module;
